@@ -19,7 +19,7 @@ const serviceAccount = {
 if (process.env.FIREBASE_PRIVATE_KEY) {
     admin.initializeApp({
       credential: admin.credential.cert(serviceAccount),
-      databaseURL: "https://truecaller-clone-74794-default-rtdb.firebaseio.com/" // Tumhara exact database URL fix kar diya hai
+      databaseURL: "https://truecaller-clone-74794-default-rtdb.firebaseio.com/"
     });
     console.log("✓ Firebase Admin SDK linked successfully with Realtime DB!");
 } else {
@@ -28,23 +28,53 @@ if (process.env.FIREBASE_PRIVATE_KEY) {
 
 const db = admin.apps.length ? admin.database() : null;
 
-// 🔍 API: Search Number
+// 🔍 SMART API: Search Number (Handles 346 Contacts & Country Codes)
 app.post('/api/search', async (req, res) => {
-    const { number } = req.body;
+    let { number } = req.body;
     if (!number) return res.json({ success: false, message: "Number toh dalo bhai!" });
     if (!db) return res.json({ success: false, message: "Backend active hai, par Firebase connected nahi hai!" });
 
+    // Clean space and convert to string
+    let searchNum = number.toString().trim();
+
     try {
-        const ref = db.ref(`contacts/${number}`);
-        const snapshot = await ref.once('value');
+        // Step 1: Root check (Agar data pure root par ya direct contacts par ho)
+        const rootRef = db.ref('/');
+        const rootSnapshot = await rootRef.once('value');
         
-        if (snapshot.exists()) {
-            res.json({ success: true, found: true, data: snapshot.val() });
-        } else {
-            res.json({ success: true, found: false, message: "Yeh number database mein nahi mila." });
+        if (rootSnapshot.exists()) {
+            const rootData = rootSnapshot.val();
+            
+            // Agar data 'contacts' folder ke andar hai ya direct root par hai, dono check karega
+            let targetData = rootData.contacts ? rootData.contacts : rootData;
+            
+            // Poore database keys (numbers) mein match dhoondo
+            let foundKey = Object.keys(targetData).find(key => {
+                let cleanKey = key.replace(/\D/g, ''); // Remove + or spaces from DB keys
+                return cleanKey.includes(searchNum) || searchNum.includes(cleanKey);
+            });
+
+            if (foundKey) {
+                let matchedRecord = targetData[foundKey];
+                
+                // Format name response (agar normal text hai ya object hai)
+                let finalName = typeof matchedRecord === 'object' ? (matchedRecord.name || matchedRecord.Display_Name || "Saved Contact") : matchedRecord;
+                let isSpam = typeof matchedRecord === 'object' ? (matchedRecord.isSpam === true || matchedRecord.isSpam === "true") : false;
+
+                return res.json({
+                    success: true,
+                    found: true,
+                    data: { name: finalName, isSpam: isSpam }
+                });
+            }
         }
+
+        // Agar kahin nahi mila
+        res.json({ success: true, found: false, message: "Yeh number database mein nahi mila." });
+
     } catch (error) {
-        res.json({ success: false, message: "Database error occurred." });
+        console.error("Database Error:", error);
+        res.json({ success: false, message: "Database search error occurred." });
     }
 });
 
