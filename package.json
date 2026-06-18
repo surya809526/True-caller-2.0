@@ -1,0 +1,13 @@
+{
+  "name": "true-caller-clone",
+  "version": "1.0.0",
+  "description": "Mini Truecaller Clone using Firebase by Rahul",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "express": "^4.19.2",
+    "firebase-admin": "^12.0.0"
+  }
+}
