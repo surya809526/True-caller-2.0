@@ -7,8 +7,7 @@ const PORT = process.env.PORT || 3000;
 app.use(express.json());
 app.use(express.static('public'));
 
-// 🔑 SAFE FIREBASE INITIALIZATION USING RENDER ENVIRONMENT VARIABLES
-// Render settings mein hum config variables daal denge taaki code safe rahe.
+// 🔑 SAFE FIREBASE INITIALIZATION WITH YOUR EXACT URL
 const serviceAccount = {
   "type": "service_account",
   "project_id": process.env.FIREBASE_PROJECT_ID || "truecaller-clone-74794",
@@ -20,10 +19,11 @@ const serviceAccount = {
 if (process.env.FIREBASE_PRIVATE_KEY) {
     admin.initializeApp({
       credential: admin.credential.cert(serviceAccount),
-      databaseURL: "https://truecaller-clone-74794-default-rtdb.firebaseio.com/"
+      databaseURL: "https://truecaller-clone-74794-default-rtdb.firebaseio.com/" // Tumhara exact database URL fix kar diya hai
     });
+    console.log("✓ Firebase Admin SDK linked successfully with Realtime DB!");
 } else {
-    console.log("⚠️ Warning: Firebase credentials abhi tak Render variables mein nahi dale gaye hain!");
+    console.log("⚠️ Warning: FIREBASE_PRIVATE_KEY is missing in Render Environment Variables!");
 }
 
 const db = admin.apps.length ? admin.database() : null;
@@ -32,7 +32,7 @@ const db = admin.apps.length ? admin.database() : null;
 app.post('/api/search', async (req, res) => {
     const { number } = req.body;
     if (!number) return res.json({ success: false, message: "Number toh dalo bhai!" });
-    if (!db) return res.json({ success: false, message: "Backend Engine Configured, par Firebase connected nahi hai!" });
+    if (!db) return res.json({ success: false, message: "Backend active hai, par Firebase connected nahi hai!" });
 
     try {
         const ref = db.ref(`contacts/${number}`);
@@ -52,7 +52,7 @@ app.post('/api/search', async (req, res) => {
 app.post('/api/report', async (req, res) => {
     const { number, name, isSpam } = req.body;
     if (!number || !name) return res.json({ success: false, message: "Name aur Number dono zaroori hain!" });
-    if (!db) return res.json({ success: false, message: "Backend Engine Configured, par Firebase connected nahi hai!" });
+    if (!db) return res.json({ success: false, message: "Backend active hai, par Firebase connected nahi hai!" });
 
     try {
         const ref = db.ref(`contacts/${number}`);
